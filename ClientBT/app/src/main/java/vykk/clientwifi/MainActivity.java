@@ -1,6 +1,5 @@
 package vykk.clientwifi;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
@@ -15,11 +14,20 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import android.location.Location;
+
+import com.google.gson.Gson;
+
+
 public class MainActivity extends Activity {
 
     TextView textResponse;
     EditText editTextAddress, editTextPort;
     Button buttonConnect, buttonClear;
+
+    private Gson gson = new Gson();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,23 +79,10 @@ public class MainActivity extends Activity {
 
             try {
                 socket = new Socket(dstAddress, dstPort);
-
-                ByteArrayOutputStream byteArrayOutputStream =
-                        new ByteArrayOutputStream(1024);
-                byte[] buffer = new byte[1024];
-
-                int bytesRead;
                 InputStream inputStream = socket.getInputStream();
-
-    /*
-     * notice:
-     * inputStream.read() will block if no data return
-     */
-                while ((bytesRead = inputStream.read(buffer)) != -1){
-                    byteArrayOutputStream.write(buffer, 0, bytesRead);
-                    response += byteArrayOutputStream.toString("UTF-8");
-                }
-
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                Location location= gson.fromJson(reader, Location.class);
+                response="Latitude : " + String.valueOf(location.getLatitude()) + "\n Longitude : " + String.valueOf(location.getLongitude());
             } catch (UnknownHostException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
