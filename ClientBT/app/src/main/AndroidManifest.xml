@@ -2,13 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="vykk.clientwifi"
     android:versionCode="1"
-    android:versionName="1.0" >
+    android:versionName="1.0"
+    xmlns:tools="http://schemas.android.com/tools">
+
 
     <uses-sdk
         android:minSdkVersion="8"
         android:targetSdkVersion="9" />
 
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission
+        android:name="android.permission.ACCESS_MOCK_LOCATION"
+        tools:ignore="MockLocation" />
 
     <application
         android:allowBackup="true"

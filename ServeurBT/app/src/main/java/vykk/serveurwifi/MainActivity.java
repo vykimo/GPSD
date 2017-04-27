@@ -13,6 +13,7 @@ import java.util.Enumeration;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.app.Activity;
+import android.support.v4.content.ContextCompat;
 import android.widget.TextView;
 
 import android.location.Location;
@@ -21,19 +22,17 @@ import android.provider.Settings;
 import android.Manifest;
 import android.location.LocationManager;
 import android.location.LocationListener;
-import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.os.Build;
 import com.google.gson.Gson;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements LocationListener{
 
     TextView info, infoip, msg;
     String message = "";
     ServerSocket serverSocket;
-
+    private static final int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION=1;
     LocationManager locationManager;
-    LocationListener locationListener;
+    //LocationListener locationListener;
     private Location mCurrentLocation;
     private Gson gson = new Gson();
 
@@ -49,52 +48,59 @@ public class MainActivity extends Activity {
 
         Thread socketServerThread = new Thread(new SocketServerThread());
         socketServerThread.start();
+
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager) this.getSystemService(LOCATION_SERVICE);
 
-        // Define a listener that responds to location updates
-        locationListener = new LocationListener() {
-            public void onLocationChanged(Location location) {
-                // Called when a new location is found by the network location provider.
-            mCurrentLocation=location;
-            }
-
-            public void onStatusChanged(String provider, int status, Bundle extras) {}
-
-            public void onProviderEnabled(String provider) {}
-
-            public void onProviderDisabled(String provider) {
-
-                Intent i = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                startActivity(i);
-            }
-        };
-        configure_button();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED){
+            //demander la permission
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+        }
+        try {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, this);
+        } catch (SecurityException se) {
+            se.printStackTrace();
+        }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case 10:
-                configure_button();
-                break;
-            default:
-                break;
-        }
+    public void onLocationChanged(Location location) {
+        // Called when a new location is found by the gps location provider.
+        mCurrentLocation=location;
+    }
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {}
+
+    @Override
+    public void onProviderEnabled(String provider) {}
+
+    @Override
+    public void onProviderDisabled(String provider) {
+
+        Intent i = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+        startActivity(i);
     }
 
-    void configure_button() {
-        // first check for permissions
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
-                PackageManager.PERMISSION_GRANTED) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.INTERNET}, 10);
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[],
+                                           int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // La permission est garantie
+                    try {
+                        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, this);
+                    } catch (SecurityException se) {
+                        se.printStackTrace();
+                    }
+                }
             }
         }
-        // Register the listener with the Location Manager to receive location updates
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, locationListener);
     }
 
     @Override

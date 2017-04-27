@@ -5,9 +5,14 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -23,9 +28,12 @@ import com.google.gson.Gson;
 
 public class MainActivity extends Activity {
 
+    private static final int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION=1;
+    MockLocationProvider mock;
     TextView textResponse;
     EditText editTextAddress, editTextPort;
     Button buttonConnect, buttonClear;
+    Location location;
 
     private Gson gson = new Gson();
 
@@ -34,32 +42,61 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        editTextAddress = (EditText)findViewById(R.id.address);
-        editTextPort = (EditText)findViewById(R.id.port);
-        buttonConnect = (Button)findViewById(R.id.connect);
-        buttonClear = (Button)findViewById(R.id.clear);
-        textResponse = (TextView)findViewById(R.id.response);
+        editTextAddress = (EditText) findViewById(R.id.address);
+        editTextPort = (EditText) findViewById(R.id.port);
+        buttonConnect = (Button) findViewById(R.id.connect);
+        buttonClear = (Button) findViewById(R.id.clear);
+        textResponse = (TextView) findViewById(R.id.response);
 
         buttonConnect.setOnClickListener(buttonConnectOnClickListener);
 
-        buttonClear.setOnClickListener(new OnClickListener(){
+        buttonClear.setOnClickListener(new OnClickListener() {
 
             @Override
             public void onClick(View v) {
                 textResponse.setText("");
-            }});
+            }
+        });
+
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED){
+            //demander la permission
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+        }
+
+        try {
+            mock = new MockLocationProvider(LocationManager.GPS_PROVIDER, this);
+        }
+        catch (SecurityException e) {
+            e.printStackTrace();
+        }
     }
 
-    OnClickListener buttonConnectOnClickListener =
-            new OnClickListener(){
+    OnClickListener buttonConnectOnClickListener = new OnClickListener(){
+        @Override
+        public void onClick(View arg0) {
+            MyClientTask myClientTask = new MyClientTask(
+                    editTextAddress.getText().toString(),
+                    Integer.parseInt(editTextPort.getText().toString()));
+            myClientTask.execute();
+        }
+    };
 
-                @Override
-                public void onClick(View arg0) {
-                    MyClientTask myClientTask = new MyClientTask(
-                            editTextAddress.getText().toString(),
-                            Integer.parseInt(editTextPort.getText().toString()));
-                    myClientTask.execute();
-                }};
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[],
+                                           int[] grantResults) {
+    }
+
+    @Override
+    protected void onDestroy() {
+        mock.shutdown();
+        super.onDestroy();
+    }
+
 
     public class MyClientTask extends AsyncTask<Void, Void, Void> {
 
@@ -81,8 +118,14 @@ public class MainActivity extends Activity {
                 socket = new Socket(dstAddress, dstPort);
                 InputStream inputStream = socket.getInputStream();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                Location location= gson.fromJson(reader, Location.class);
-                response="Latitude : " + String.valueOf(location.getLatitude()) + "\n Longitude : " + String.valueOf(location.getLongitude());
+                location= gson.fromJson(reader, Location.class);
+                if (location!=null ) {
+                    response = "Latitude : " + String.valueOf(location.getLatitude()) + "\nLongitude : " + String.valueOf(location.getLongitude());
+                    mock.pushLocation(location);
+                }
+                else{
+                    response="Aucun signal Gps, veuillez réessayer à un autre endroit";
+                }
             } catch (UnknownHostException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -91,7 +134,14 @@ public class MainActivity extends Activity {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
                 response = "IOException: " + e.toString();
-            }finally{
+            } catch (SecurityException e) {
+                e.printStackTrace();
+                response = "SecurityException: " + e.toString();
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+                response = "IllegalArgumentException: " + e.toString();
+            } finally
+            {
                 if(socket != null){
                     try {
                         socket.close();
