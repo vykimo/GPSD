@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
     EditText editTextAddress, editTextPort;
     Button buttonConnect, buttonClear;
     Location location;
+    Socket socket = null;
 
     private Gson gson = new Gson();
 
@@ -112,19 +113,24 @@ public class MainActivity extends Activity {
         @Override
         protected Void doInBackground(Void... arg0) {
 
-            Socket socket = null;
-
             try {
-                socket = new Socket(dstAddress, dstPort);
-                InputStream inputStream = socket.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                location= gson.fromJson(reader, Location.class);
-                if (location!=null ) {
-                    response = "Latitude : " + String.valueOf(location.getLatitude()) + "\nLongitude : " + String.valueOf(location.getLongitude());
-                    mock.pushLocation(location);
-                }
-                else{
-                    response="Aucun signal Gps, veuillez réessayer à un autre endroit";
+                while(true){
+                    socket = new Socket(dstAddress, dstPort);
+                    InputStream inputStream = socket.getInputStream();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                    location= gson.fromJson(reader, Location.class);
+                    if (location!=null ) {
+                        response += "Latitude : " + String.valueOf(location.getLatitude()) + "\nLongitude : " + String.valueOf(location.getLongitude())+"\n";
+                        mock.pushLocation(location);
+                    }
+                    else {
+                        response += "Aucun signal Gps, veuillez réessayer à un autre endroit"+"\n";
+                    }
+                    textResponse.post(new Runnable() {
+                        public void run() {
+                            textResponse.setText(response);
+                        }
+                    });
                 }
             } catch (UnknownHostException e) {
                 // TODO Auto-generated catch block
@@ -140,8 +146,8 @@ public class MainActivity extends Activity {
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
                 response = "IllegalArgumentException: " + e.toString();
-            } finally
-            {
+            }
+            finally {
                 if(socket != null){
                     try {
                         socket.close();
@@ -156,8 +162,8 @@ public class MainActivity extends Activity {
 
         @Override
         protected void onPostExecute(Void result) {
-            textResponse.setText(response);
             super.onPostExecute(result);
+            finish();
         }
 
     }

@@ -34,13 +34,13 @@ public class MockLocationProvider {
         location.setTime(mockLocation.getTime());
         location.setElapsedRealtimeNanos(mockLocation.getElapsedRealtimeNanos());
         location.setAccuracy(mockLocation.getAccuracy());
-        t = new Timer();
-        t.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
+        //t = new Timer();
+        //t.scheduleAtFixedRate(new TimerTask() {
+          //  @Override
+            //public void run() {
                 lm.setTestProviderLocation(providerName, location);
-            }
-        }, 0, 1000);
+            //}
+        //}, 0, 1000);
     }
 
     public void shutdown() {

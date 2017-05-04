@@ -9,6 +9,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.Enumeration;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -30,9 +32,9 @@ public class MainActivity extends Activity implements LocationListener{
     TextView info, infoip, msg;
     String message = "";
     ServerSocket serverSocket;
+    Socket socket;
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION=1;
     LocationManager locationManager;
-    //LocationListener locationListener;
     private Location mCurrentLocation;
     private Gson gson = new Gson();
 
@@ -60,7 +62,7 @@ public class MainActivity extends Activity implements LocationListener{
                     MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
         }
         try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
         } catch (SecurityException se) {
             se.printStackTrace();
         }
@@ -120,6 +122,7 @@ public class MainActivity extends Activity implements LocationListener{
 
         static final int SocketServerPORT = 8080;
         int count = 0;
+        Timer t;
 
         @Override
         public void run() {
@@ -133,28 +136,31 @@ public class MainActivity extends Activity implements LocationListener{
                                 + serverSocket.getLocalPort());
                     }
                 });
-                while (true) {
-                    Socket socket = serverSocket.accept();
+                socket = serverSocket.accept();
+            }catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            t = new Timer();
+            t.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    SocketServerReplyThread socketServerReplyThread = new SocketServerReplyThread(
+                            socket, count);
                     count++;
                     message += "#" + count + " from " + socket.getInetAddress()
                             + ":" + socket.getPort() + "\n";
                     MainActivity.this.runOnUiThread(new Runnable() {
-
                         @Override
                         public void run() {
                             msg.setText(message);
-                        }
-                    });
-                    SocketServerReplyThread socketServerReplyThread = new SocketServerReplyThread(
-                            socket, count);
+                        }});
                     socketServerReplyThread.run();
                 }
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            }, 0, 1000);
         }
     }
+
 
     private class SocketServerReplyThread extends Thread {
 
@@ -175,6 +181,7 @@ public class MainActivity extends Activity implements LocationListener{
                 PrintStream printStream = new PrintStream(outputStream);
                 printStream.print(msgReply);
                 printStream.close();
+                socket = serverSocket.accept();
 
                 message += "replayed: " + msgReply + "\n";
 
