@@ -20,11 +20,11 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import android.location.Location;
 
 import com.google.gson.Gson;
+import com.google.gson.stream.JsonReader;
 
 
 public class MainActivity extends Activity {
@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
     Socket socket = null;
     Boolean stop=false;
 
-    private Gson gson = new Gson();
+    Gson gson = new Gson();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,10 +126,10 @@ public class MainActivity extends Activity {
 
             try {
                 socket = new Socket(dstAddress, dstPort);
-                while(!socket.isClosed() && !stop){
+                while(!stop){
                     Log.d(TAG, String.valueOf(socket.isClosed()));
                     InputStream inputStream = socket.getInputStream();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                    JsonReader reader = new JsonReader(new InputStreamReader(inputStream));
                     location= gson.fromJson(reader, Location.class);
                     count++;
                     if (location!=null ) {

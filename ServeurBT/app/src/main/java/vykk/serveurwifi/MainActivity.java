@@ -26,7 +26,6 @@ import android.location.LocationManager;
 import android.location.LocationListener;
 import android.support.v4.app.ActivityCompat;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
 public class MainActivity extends Activity implements LocationListener{
 
