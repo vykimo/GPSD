@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.app.Activity;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -29,12 +30,14 @@ import com.google.gson.Gson;
 public class MainActivity extends Activity {
 
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION=1;
+    private static final String TAG = "MyActivity";
     MockLocationProvider mock;
     TextView textResponse;
     EditText editTextAddress, editTextPort;
-    Button buttonConnect, buttonClear;
+    Button buttonConnect,buttonStop;
     Location location;
     Socket socket = null;
+    Boolean stop=false;
 
     private Gson gson = new Gson();
 
@@ -46,18 +49,10 @@ public class MainActivity extends Activity {
         editTextAddress = (EditText) findViewById(R.id.address);
         editTextPort = (EditText) findViewById(R.id.port);
         buttonConnect = (Button) findViewById(R.id.connect);
-        buttonClear = (Button) findViewById(R.id.clear);
+        buttonStop = (Button) findViewById(R.id.stop);
         textResponse = (TextView) findViewById(R.id.response);
 
         buttonConnect.setOnClickListener(buttonConnectOnClickListener);
-
-        buttonClear.setOnClickListener(new OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                textResponse.setText("");
-            }
-        });
 
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
@@ -74,6 +69,13 @@ public class MainActivity extends Activity {
         catch (SecurityException e) {
             e.printStackTrace();
         }
+        buttonStop.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mock.shutdown();
+                stop=true;
+            }
+        });
     }
 
     OnClickListener buttonConnectOnClickListener = new OnClickListener(){
@@ -94,8 +96,16 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        mock.shutdown();
         super.onDestroy();
+        mock.shutdown();
+        if(socket != null){
+            try {
+                socket.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
     }
 
 
@@ -103,7 +113,8 @@ public class MainActivity extends Activity {
 
         String dstAddress;
         int dstPort;
-        String response = "";
+        int count = 0;
+        String response;
 
         MyClientTask(String addr, int port){
             dstAddress = addr;
@@ -114,17 +125,19 @@ public class MainActivity extends Activity {
         protected Void doInBackground(Void... arg0) {
 
             try {
-                while(true){
-                    socket = new Socket(dstAddress, dstPort);
+                socket = new Socket(dstAddress, dstPort);
+                while(!socket.isClosed() && !stop){
+                    Log.d(TAG, String.valueOf(socket.isClosed()));
                     InputStream inputStream = socket.getInputStream();
                     BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
                     location= gson.fromJson(reader, Location.class);
+                    count++;
                     if (location!=null ) {
-                        response += "Latitude : " + String.valueOf(location.getLatitude()) + "\nLongitude : " + String.valueOf(location.getLongitude())+"\n";
+                        response = "#" + count + " Latitude : " + String.valueOf(location.getLatitude()) + "\nLongitude : " + String.valueOf(location.getLongitude())+"\n";
                         mock.pushLocation(location);
                     }
                     else {
-                        response += "Aucun signal Gps, veuillez réessayer à un autre endroit"+"\n";
+                        response = "#" + count + " Aucun signal Gps, veuillez réessayer à un autre endroit"+"\n";
                     }
                     textResponse.post(new Runnable() {
                         public void run() {
@@ -147,23 +160,12 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
                 response = "IllegalArgumentException: " + e.toString();
             }
-            finally {
-                if(socket != null){
-                    try {
-                        socket.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                }
-            }
             return null;
         }
 
         @Override
         protected void onPostExecute(Void result) {
             super.onPostExecute(result);
-            finish();
         }
 
     }

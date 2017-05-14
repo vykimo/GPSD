@@ -26,11 +26,12 @@ import android.location.LocationManager;
 import android.location.LocationListener;
 import android.support.v4.app.ActivityCompat;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 public class MainActivity extends Activity implements LocationListener{
 
     TextView info, infoip, msg;
-    String message = "";
+    String message;
     ServerSocket serverSocket;
     Socket socket;
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION=1;
@@ -108,6 +109,14 @@ public class MainActivity extends Activity implements LocationListener{
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
         if (serverSocket != null) {
             try {
                 serverSocket.close();
@@ -137,27 +146,28 @@ public class MainActivity extends Activity implements LocationListener{
                     }
                 });
                 socket = serverSocket.accept();
+                t = new Timer();
+                t.scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        SocketServerReplyThread socketServerReplyThread = new SocketServerReplyThread(
+                                socket, count);
+                        count++;
+                        message = "#" + count + " from " + socket.getInetAddress()
+                                + ":" + socket.getPort() + "\n";
+                        MainActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                msg.setText(message);
+                            }
+                        });
+                        socketServerReplyThread.run();
+                    }
+                }, 0, 1000);
             }catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
-            t = new Timer();
-            t.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    SocketServerReplyThread socketServerReplyThread = new SocketServerReplyThread(
-                            socket, count);
-                    count++;
-                    message += "#" + count + " from " + socket.getInetAddress()
-                            + ":" + socket.getPort() + "\n";
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            msg.setText(message);
-                        }});
-                    socketServerReplyThread.run();
-                }
-            }, 0, 1000);
         }
     }
 
@@ -179,10 +189,7 @@ public class MainActivity extends Activity implements LocationListener{
             try {
                 outputStream = hostThreadSocket.getOutputStream();
                 PrintStream printStream = new PrintStream(outputStream);
-                printStream.print(msgReply);
-                printStream.close();
-                socket = serverSocket.accept();
-
+                printStream.println(msgReply);
                 message += "replayed: " + msgReply + "\n";
 
                 MainActivity.this.runOnUiThread(new Runnable() {
