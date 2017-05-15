@@ -7,7 +7,6 @@ import android.location.Criteria;
 import android.location.LocationProvider;
 
 import java.util.Timer;
-import java.util.TimerTask;
 
 public class MockLocationProvider {
     String providerName;
