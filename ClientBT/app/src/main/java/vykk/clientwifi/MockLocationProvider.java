@@ -14,6 +14,7 @@ public class MockLocationProvider {
     Context ctx;
     LocationManager lm;
     Timer t;
+    Location location= new Location(providerName);
 
     public MockLocationProvider(String name, Context ctx) throws SecurityException {
         this.providerName = name;
@@ -24,8 +25,8 @@ public class MockLocationProvider {
         lm.setTestProviderEnabled(providerName, true);
     }
 
-    public void pushLocation(Location mockLocation) throws SecurityException,IllegalArgumentException {
-        final Location location = new Location(providerName);
+    public void pushLocation(Position mockLocation) throws SecurityException,IllegalArgumentException {
+        location= new Location(providerName);
         location.setLatitude(mockLocation.getLatitude());
         location.setLongitude(mockLocation.getLongitude());
         location.setAltitude(mockLocation.getAltitude());
@@ -34,13 +35,13 @@ public class MockLocationProvider {
         location.setTime(mockLocation.getTime());
         location.setElapsedRealtimeNanos(mockLocation.getElapsedRealtimeNanos());
         location.setAccuracy(mockLocation.getAccuracy());
-        //t = new Timer();
-        //t.scheduleAtFixedRate(new TimerTask() {
-          //  @Override
-            //public void run() {
-                lm.setTestProviderLocation(providerName, location);
-            //}
-        //}, 0, 1000);
+        t = new Timer();
+        t.scheduleAtFixedRate(new TimerTask() {
+            @Override
+                public void run() {
+                    lm.setTestProviderLocation(providerName, location);
+            }
+        }, 0, 200);
     }
 
     public void shutdown() {

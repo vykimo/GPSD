@@ -13,7 +13,6 @@ import android.os.Bundle;
 import android.app.Activity;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -35,7 +34,7 @@ public class MainActivity extends Activity {
     TextView textResponse;
     EditText editTextAddress, editTextPort;
     Button buttonConnect,buttonStop;
-    Location location;
+    Position position;
     Socket socket = null;
     Boolean stop=false;
 
@@ -106,6 +105,7 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
             }
         }
+
     }
 
 
@@ -126,15 +126,20 @@ public class MainActivity extends Activity {
 
             try {
                 socket = new Socket(dstAddress, dstPort);
+                InputStream inputStream = socket.getInputStream();
+                JsonReader reader = new JsonReader(new InputStreamReader(inputStream));
+                position= gson.fromJson(reader, Position.class);
+                if (position!=null) {
+                    mock.pushLocation(position);
+                }
                 while(!stop){
-                    Log.d(TAG, String.valueOf(socket.isClosed()));
-                    InputStream inputStream = socket.getInputStream();
-                    JsonReader reader = new JsonReader(new InputStreamReader(inputStream));
-                    location= gson.fromJson(reader, Location.class);
+                    inputStream = socket.getInputStream();
+                    reader = new JsonReader(new InputStreamReader(inputStream));
+                    position= gson.fromJson(reader, Position.class);
                     count++;
-                    if (location!=null ) {
-                        response = "#" + count + " Latitude : " + String.valueOf(location.getLatitude()) + "\nLongitude : " + String.valueOf(location.getLongitude())+"\n";
-                        mock.pushLocation(location);
+                    if (position!=null) {
+                        response = "#" + count + " Latitude : " + String.valueOf(position.getLatitude()) + "\nLongitude : " + String.valueOf(position.getLongitude())+"\n";
+                        //mock.pushLocation(location);
                     }
                     else {
                         response = "#" + count + " Aucun signal Gps, veuillez réessayer à un autre endroit"+"\n";

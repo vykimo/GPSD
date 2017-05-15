@@ -36,6 +36,7 @@ public class MainActivity extends Activity implements LocationListener{
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION=1;
     LocationManager locationManager;
     private Location mCurrentLocation;
+    private Position mCurrentPosition;
     private Gson gson = new Gson();
 
     @Override
@@ -96,7 +97,7 @@ public class MainActivity extends Activity implements LocationListener{
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // La permission est garantie
                     try {
-                        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, this);
+                        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
                     } catch (SecurityException se) {
                         se.printStackTrace();
                     }
@@ -149,68 +150,38 @@ public class MainActivity extends Activity implements LocationListener{
                 t.scheduleAtFixedRate(new TimerTask() {
                     @Override
                     public void run() {
-                        SocketServerReplyThread socketServerReplyThread = new SocketServerReplyThread(
-                                socket, count);
                         count++;
                         message = "#" + count + " from " + socket.getInetAddress()
                                 + ":" + socket.getPort() + "\n";
-                        MainActivity.this.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                msg.setText(message);
-                            }
-                        });
-                        socketServerReplyThread.run();
+                        OutputStream outputStream;
+                        if (mCurrentLocation!=null)
+                            mCurrentPosition=new Position(mCurrentLocation);
+                        else
+                            mCurrentPosition=null;
+                        String msgReply = gson.toJson(mCurrentPosition);
+                        try {
+                            outputStream = socket.getOutputStream();
+                            PrintStream printStream = new PrintStream(outputStream);
+                            printStream.println(msgReply);
+                            printStream.flush();
+                            message += "replayed: " + msgReply + "\n";
+                            msg.post(new Runnable() {
+                                public void run() {
+                                    msg.setText(message);
+                                }
+                            });
+                        }
+                        catch (IOException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                            message += "Something wrong! " + e.toString() + "\n";
+                        }
                     }
                 }, 0, 1000);
             }catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
-        }
-    }
-
-
-    private class SocketServerReplyThread extends Thread {
-
-        private Socket hostThreadSocket;
-        int cnt;
-
-        SocketServerReplyThread(Socket socket, int c) {
-            hostThreadSocket = socket;
-            cnt = c;
-        }
-
-        @Override
-        public void run() {
-            OutputStream outputStream;
-            String msgReply = gson.toJson(mCurrentLocation);
-            try {
-                outputStream = hostThreadSocket.getOutputStream();
-                PrintStream printStream = new PrintStream(outputStream);
-                printStream.println(msgReply);
-                message += "replayed: " + msgReply + "\n";
-
-                MainActivity.this.runOnUiThread(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        msg.setText(message);
-                    }
-                });
-            }
-            catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                message += "Something wrong! " + e.toString() + "\n";
-            }
-            MainActivity.this.runOnUiThread(new Runnable() {
-
-                @Override
-                public void run() {
-                    msg.setText(message);
-                }
-            });
         }
     }
 
