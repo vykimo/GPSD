@@ -20,7 +20,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.InputStreamReader;
-import android.location.Location;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
@@ -126,20 +125,14 @@ public class MainActivity extends Activity {
 
             try {
                 socket = new Socket(dstAddress, dstPort);
-                InputStream inputStream = socket.getInputStream();
-                JsonReader reader = new JsonReader(new InputStreamReader(inputStream));
-                position= gson.fromJson(reader, Position.class);
-                if (position!=null) {
-                    mock.pushLocation(position);
-                }
                 while(!stop){
-                    inputStream = socket.getInputStream();
-                    reader = new JsonReader(new InputStreamReader(inputStream));
+                    InputStream inputStream = socket.getInputStream();
+                    JsonReader reader = new JsonReader(new InputStreamReader(inputStream));
                     position= gson.fromJson(reader, Position.class);
                     count++;
                     if (position!=null) {
                         response = "#" + count + " Latitude : " + String.valueOf(position.getLatitude()) + "\nLongitude : " + String.valueOf(position.getLongitude())+"\n";
-                        //mock.pushLocation(location);
+                        mock.pushLocation(position);
                     }
                     else {
                         response = "#" + count + " Aucun signal Gps, veuillez réessayer à un autre endroit"+"\n";
